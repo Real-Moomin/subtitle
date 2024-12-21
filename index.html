@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
   <title>PPTX 슬라이드 생성기</title>
   <style>
     body {
@@ -69,6 +69,10 @@
       const slides = inputText.split('\n'); // 줄바꿈으로 슬라이드 구분
       const pptx = new PptxGenJS();
 
+      // 파일 이름 설정: 첫 번째 문장 + .pptx
+      const firstLine = slides[0]?.trim() || '슬라이드';
+      const fileName = `${firstLine.replace(/[\\/:*?"<>|]/g, '').slice(0, 50)}.pptx`;
+
       slides.forEach((slideText) => {
         const slide = pptx.addSlide();
         slide.background = { color: '000000' }; // 검은 배경
@@ -80,7 +84,7 @@
 
         slide.addText(slideText, {
           x: 0.5,                // 좌측 여백
-          y: 4.3,                // 하단에서 50px 떨어진 위치
+          y: 4.5,                // 하단에서 50px 떨어진 위치
           w: 8.5,                // 텍스트 너비
           h: 0.7,                // 텍스트 높이
           fontSize: 24 * 1.4,    // 폰트 크기 (1.4배 증가)
@@ -92,7 +96,7 @@
         });
       });
 
-      pptx.writeFile({ fileName: '슬라이드.pptx' });
+      pptx.writeFile({ fileName });
     });
   </script>
 </body>
