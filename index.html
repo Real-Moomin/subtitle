@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+
   <title>PPTX 슬라이드 생성기</title>
   <style>
     body {
@@ -11,17 +12,16 @@
       background-color: #121212;
       color: #ffffff;
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       align-items: center;
+      justify-content: center;
       height: 100vh;
       margin: 0;
     }
-
     .container {
       text-align: center;
       max-width: 600px;
     }
-
     textarea {
       width: 100%;
       height: 200px;
@@ -33,8 +33,15 @@
       color: #ffffff;
       font-size: 16px;
       resize: none;
+      max-width: 600px;
+      font-family: Arial, sans-serif;
     }
 
+
+    input[type="file"] {
+      margin: 10px 0;
+      color: #888;
+    }
     select {
       margin: 20px;
       padding: 5px;
@@ -43,8 +50,8 @@
       background-color: #1e1e1e;
       color: #ffffff;
       border: 1px solid #ffffff;
+            max-width: 600px;
     }
-
     button {
       background-color: #007bff;
       color: white;
@@ -61,26 +68,48 @@
     p{color: #aaa;
   line-height: 1.4}
   </style>
-
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
-  <div class="container">
-    <h1>PPTX 슬라이드 생성기</h1>
-    <p>인터넷이 원활한 곳에서 사용해주세요.<br>만약 pptx 다운로드가 안 되면, 카톡이나 카페 말고<br>Chrome, Safari 등 다른  인터넷 앱에서 열어보세요.</p>
-   <textarea id="inputText" placeholder="여기에 텍스트를 입력하세요. &#10;줄을 바꿀 때마다 새 페이지에 출력됩니다. &#10;빈 줄은 빈 페이지로 출력합니다."></textarea>
-    <label for="fontSize"> </label>
-    <select id="fontSize">
-      <option value="21">작은 글씨</option>
-      <option value="24" selected>보통 글씨</option>
-    </select>
-    <br>
-    <button id="generateBtn">PPTX 저장하기</button>
-  </div>
+    <div class="container">
+  <h1>PPTX 슬라이드 생성기</h1>
+    <p>인터넷이 원활한 곳에서 사용해주세요.<br>만약 pptx 다운로드가 안 되면, 카톡이나 카페 말고<br>Chrome, Safari 등 다른  인터넷 앱에서 열어보세요. <br>pptx 파일을 수정하려면 파일 선택을 클릭하세요.</p>
+  <input type="file" id="uploadPptx" accept=".pptx">
+  <textarea id="inputText" placeholder="여기에 텍스트를 입력하세요. &#10;줄을 바꿀 때마다 새 페이지에 출력됩니다. &#10;빈 줄은 빈 페이지로 출력합니다."></textarea>
+  <label for="fontSize"> </label>
+  <select id="fontSize">
+    <option value="21">작은 글씨</option>
+    <option value="24" selected>보통 글씨</option>
+  </select><br>
+  <button id="generateBtn">PPTX 저장하기</button>
+</div>
   <script>
+    document.getElementById('uploadPptx').addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const jszip = new JSZip();
+      const pptxData = await file.arrayBuffer();
+      const zip = await jszip.loadAsync(pptxData);
+
+      const slides = [];
+      for (const key of Object.keys(zip.files)) {
+        if (key.startsWith('ppt/slides/slide') && key.endsWith('.xml')) {
+          const xmlContent = await zip.files[key].async('text');
+          const textMatches = [...xmlContent.matchAll(/<a:t>(.*?)<\/a:t>/g)];
+          const slideText = textMatches.map(match => match[1]).join('\n');
+          slides.push(slideText.trim());
+        }
+      }
+
+      // 입력 필드에 슬라이드별 텍스트 표시
+      const inputField = document.getElementById('inputText');
+      inputField.value = slides.join('\n');
+    });
+
     document.getElementById('generateBtn').addEventListener('click', () => {
       const inputText = document.getElementById('inputText').value;
       const selectedFontSize = parseInt(document.getElementById('fontSize').value, 10);
-
       if (!inputText.trim()) {
         alert('텍스트를 입력하세요.');
         return;
@@ -95,7 +124,7 @@
 
       slides.forEach((slideText) => {
         const slide = pptx.addSlide();
-        slide.background = { color: '000000' }; // 검은 배경
+        slide.background = { color: '000000' };
 
         // 빈 줄도 빈 슬라이드로 처리
         if (slideText.trim() === '') {
@@ -103,16 +132,16 @@
         }
 
         slide.addText(slideText, {
-          x: 0.75,                 // 좌측 여백
-          y: 4.5,                  // 하단에서 30px
-          w: 8.5,                  // 텍스트 너비
-          h: 0.7,                  // 텍스트 높이
-          fontSize: selectedFontSize * 1.4, // 선택된 폰트 크기
-          fontFace: 'Arial',       // 폰트 이름
-          color: 'FFFFFF',         // 흰 글씨
-          bold: true,              // 볼드 처리
-          align: 'center',         // 가로 중앙 정렬
-          valign: 'bottom',        // 세로 하단 정렬
+          x: 0.75,
+          y: 4.5,
+          w: 8.5,
+          h: 0.7,
+          fontSize: selectedFontSize * 1.4,
+          fontFace: 'Arial',
+          color: 'FFFFFF',
+          bold: true,
+          align: 'center',
+          valign: 'bottom',
         });
       });
 
