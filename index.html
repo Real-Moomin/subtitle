@@ -65,15 +65,20 @@
     button:hover {
       background-color: #0056b3;
     }
-    p{color: #aaa;
-  line-height: 1.4}
-    img{max-width:500px;
-       width:100%;}
+    
+    p {color: #aaa;
+      line-height: 1.4;
+    }
+    
+    img {max-width:500px;
+         width:calc(100% - 32px);
+    }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
     <div class="container">
+      <br><br><br>
   <h1>PPTX 슬라이드 생성기</h1>
     <p>인터넷이 원활한 곳에서 사용해주세요.<br>만약 pptx 다운로드가 안 되면, 카톡이나 카페 말고<br>Chrome, Safari 등 다른  인터넷 앱에서 열어보세요. <br>pptx 파일을 수정하려면 파일 선택을 클릭하세요.</p>
   <input type="file" id="uploadPptx" accept=".pptx">
@@ -87,6 +92,7 @@
       <br><br>
   <p><b>사용 예시</b></p>
       <img src="manual.png">
+      <br><br><br>
 </div>
   <script>
     document.getElementById('uploadPptx').addEventListener('change', async (event) => {
