@@ -15,8 +15,126 @@
       flex-direction: column;
       align-items: center;
       height: 100vh;
-      ovrflow:scroll;
+      overflow: hidden;
       margin: 0;
+    }
+    .layout-wrapper {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      align-items: center;
+    }
+    .sidebar {
+      display: none;
+      width: 150px;
+      padding: 20px 10px;
+      background-color: #1a1a1a;
+      border-right: 1px solid #333;
+      height: 100%;
+      box-sizing: border-box;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+      overflow-y: auto;
+    }
+    .history-item {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      background-color: #2a2a2a;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: flex-start;
+      text-align: left;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 10px;
+      box-sizing: border-box;
+      word-break: break-all;
+      overflow: hidden;
+      transition: background-color 0.2s;
+      flex-shrink: 0;
+      line-height: 1.5;
+    }
+    .history-text {
+      width: 100%;
+    }
+    .history-date {
+      font-size: 11px;
+      opacity: 0.5;
+      margin-top: auto;
+    }
+    .delete-btn {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background: #000;
+      color: white;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      line-height: 1;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .history-item:hover .delete-btn {
+      opacity: 0.7;
+    }
+    .delete-btn:hover {
+      opacity: 1 !important;
+    }
+    .history-item:hover {
+      background-color: #3a3a3a;
+    }
+    .sidebar-title {
+      font-size: 14px;
+      font-weight: bold;
+      color: #888;
+      margin-bottom: 10px;
+    }
+    .mobile-history-btn {
+      display: block;
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+      z-index: 1000;
+    }
+    .sidebar.show-sidebar {
+      display: flex;
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      z-index: 999;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.5);
+    }
+    @media (min-width: 768px) {
+      body {
+        flex-direction: row;
+        align-items: flex-start;
+      }
+      .sidebar {
+        display: flex !important;
+        position: static;
+        box-shadow: none;
+      }
+      .mobile-history-btn {
+        display: none !important;
+      }
     }
     .container {
       text-align: center;
@@ -27,7 +145,7 @@
       height: 200px;
       margin: 20px 0px 0px 0px;
       padding: 10px;
-      border: none;
+      border: 1px solid #aaaaaa;
       border-radius: 5px;
       background-color: #1e1e1e;
       color: #ffffff;
@@ -77,6 +195,11 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
+  <img src="history.png" id="mobileHistoryBtn" class="mobile-history-btn" alt="History">
+  <div class="sidebar" id="historySidebar">
+    <div class="sidebar-title">최근 작업 (50개)</div>
+  </div>
+  <div class="layout-wrapper">
     <div class="container">
       <br><br><br>
   <h1>PPTX 슬라이드 생성기</h1>
@@ -88,13 +211,121 @@
     <option value="21">작은 글씨</option>
     <option value="24" selected>보통 글씨</option>
   </select><br>
+  <button id="tempSaveBtn" style="background-color: #28a745;">임시 저장하기</button>
   <button id="generateBtn">PPTX 저장하기</button>
       <br><br>
   <p><b>사용 예시</b></p>
       <img src="manual.png">
       <br><br><br>
 </div>
+  </div>
   <script>
+    // IndexedDB Setup
+    const dbName = 'subtitleDB';
+    const storeName = 'historyStore';
+    let db;
+
+    const initDB = () => {
+      const request = indexedDB.open(dbName, 1);
+      request.onupgradeneeded = (event) => {
+        db = event.target.result;
+        if (!db.objectStoreNames.contains(storeName)) {
+          db.createObjectStore(storeName, { keyPath: 'id', autoIncrement: true });
+        }
+      };
+      request.onsuccess = (event) => {
+        db = event.target.result;
+        loadHistory();
+      };
+      request.onerror = (event) => {
+        console.error('IndexedDB error:', event.target.errorCode);
+      };
+    };
+
+    const deleteHistory = (id) => {
+      if (!db) return;
+      const transaction = db.transaction([storeName], 'readwrite');
+      const store = transaction.objectStore(storeName);
+      store.delete(id);
+      transaction.oncomplete = () => {
+        loadHistory();
+      };
+    };
+
+    const saveHistory = (text) => {
+      if (!db || !text.trim()) return;
+      const transaction = db.transaction([storeName], 'readwrite');
+      const store = transaction.objectStore(storeName);
+      store.add({ text: text, timestamp: new Date().getTime() });
+      transaction.oncomplete = () => {
+        loadHistory();
+      };
+    };
+
+    const loadHistory = () => {
+      if (!db) return;
+      const transaction = db.transaction([storeName], 'readonly');
+      const store = transaction.objectStore(storeName);
+      const request = store.getAll();
+      request.onsuccess = (event) => {
+        let results = event.target.result;
+        results.sort((a, b) => b.timestamp - a.timestamp); // Sort by newest
+        results = results.slice(0, 50); // Limit to 50 items
+
+        const sidebar = document.getElementById('historySidebar');
+        const title = sidebar.querySelector('.sidebar-title');
+        sidebar.innerHTML = '';
+        if (title) sidebar.appendChild(title);
+        
+        results.forEach((item) => {
+          const div = document.createElement('div');
+          div.className = 'history-item';
+          
+          const textDiv = document.createElement('div');
+          textDiv.className = 'history-text';
+          let preview = item.text.replace(/\n/g, ' ');
+          if (preview.length > 20) {
+            preview = preview.slice(0, 20) + '...';
+          }
+          textDiv.textContent = preview || '빈 슬라이드';
+          div.appendChild(textDiv);
+
+          const dateDiv = document.createElement('div');
+          dateDiv.className = 'history-date';
+          const dateObj = new Date(item.timestamp);
+          const days = ['일', '월', '화', '수', '목', '금', '토'];
+          dateDiv.textContent = `${dateObj.getMonth()+1}월 ${dateObj.getDate()}일 (${days[dateObj.getDay()]}) ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+          div.appendChild(dateDiv);
+
+          div.addEventListener('click', () => {
+            document.getElementById('inputText').value = item.text;
+            if (window.innerWidth < 768) {
+              document.getElementById('historySidebar').classList.remove('show-sidebar');
+            }
+          });
+
+          const delBtn = document.createElement('div');
+          delBtn.className = 'delete-btn';
+          delBtn.textContent = '✕';
+          delBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm('해당 내역을 삭제하시겠습니까?')) {
+              deleteHistory(item.id);
+            }
+          });
+          div.appendChild(delBtn);
+
+          sidebar.appendChild(div);
+        });
+      };
+    };
+
+    initDB();
+
+    document.getElementById('mobileHistoryBtn').addEventListener('click', () => {
+      document.getElementById('historySidebar').classList.toggle('show-sidebar');
+    });
+
     document.getElementById('uploadPptx').addEventListener('change', async (event) => {
       const file = event.target.files[0];
       if (!file) return;
@@ -116,6 +347,15 @@
       // 입력 필드에 슬라이드별 텍스트 표시
       const inputField = document.getElementById('inputText');
       inputField.value = slides.join('\n');
+    });
+
+    document.getElementById('tempSaveBtn').addEventListener('click', () => {
+      const inputText = document.getElementById('inputText').value;
+      if (!inputText.trim()) {
+        alert('텍스트를 입력하세요.');
+        return;
+      }
+      saveHistory(inputText);
     });
 
     document.getElementById('generateBtn').addEventListener('click', () => {
@@ -157,6 +397,7 @@
       });
 
       pptx.writeFile({ fileName });
+      saveHistory(inputText);
     });
   </script>
 </body>
